@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
   if (rank != 0) {
     x = malloc(n * d * sizeof(double));
   }
-  MPI_Bcast(X, n * d, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(x, n * d, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   int inicio, fim;
   fatia(n, nprocs, rank, &inicio, &fim);
