@@ -8,6 +8,7 @@ Pegamos uma amostra aleatoria
 """
 
 import random
+import csv
 from pathlib import Path
 
 import numpy as np
@@ -35,14 +36,14 @@ def timestamp_para_segundos(valor):
 def main():
     random.seed(SEMENTE)
     amostra = []
+    amostra_texto = []
     mins = np.array([np.inf, np.inf, np.inf])
     maxs = np.array([-np.inf, -np.inf, -np.inf])
-    fusos = [0, 0, 0, 0, 0]
-    total = 0
-
+    
     print(f"lendo {CSV}", flush=True)
     with open(CSV) as f:
-        f.readline()  # cabecalho
+        f.readline()
+        total = 0
         for linha in f:
             partes = linha.split(",")
             if len(partes) < 4:
@@ -51,23 +52,22 @@ def main():
             lat = float(partes[1])
             seg = float(timestamp_para_segundos(int(partes[2])))
             tz = int(partes[3])
-            if 1 <= tz <= 4:
-                fusos[tz] += 1
 
             ponto = np.array([lon, lat, seg], dtype=np.float64)
+            linha_txt = [partes[0], partes[1], partes[2], partes[3].strip()]
+
             np.minimum(mins, ponto, out=mins)
             np.maximum(maxs, ponto, out=maxs)
 
             total += 1
             if len(amostra) < N_AMOSTRA:
                 amostra.append(ponto)
+                amostra_texto.append(linha_txt)
             else:
                 j = random.randrange(total)
                 if j < N_AMOSTRA:
                     amostra[j] = ponto
-
-            if total % 2000000 == 0:
-                print(f"  {total} linhas", flush=True)
+                    amostra_texto[j] = linha_txt
 
     dados = np.vstack(amostra)
     escala = maxs - mins
@@ -76,11 +76,19 @@ def main():
 
     pasta = RAIZ / "dados"
     np.save(pasta / "amostra_norm.npy", norm)
-    np.save(pasta / "amostra_lonlat.npy", dados[:, :2])
-    # O nosso alg DBSCAN le este arquivo. dois inteiros (n, d) e a matriz em double.
+    
     with open(pasta / "amostra.bin", "wb") as f:
         np.array([norm.shape[0], norm.shape[1]], dtype=np.int32).tofile(f)
         np.ascontiguousarray(norm, dtype=np.float64).tofile(f)
+
+    # Exporta o CSV original que será usado pelo script do GIF
+    caminho_csv = pasta / "amostra_original.csv"
+    with open(caminho_csv, "w", newline="") as f_csv:
+        writer = csv.writer(f_csv)
+        writer.writerow(["Longitude", "Latitude", "Timestamp", "Timezone"])
+        writer.writerows(amostra_texto)
+    
+    print(f"Pré-processamento concluído! CSV salvo em: {caminho_csv}")
 
     info = pasta / "info.txt"
     with open(info, "w") as f:
@@ -93,17 +101,11 @@ def main():
         f.write(f"max_lon={maxs[0]:.8f}\n")
         f.write(f"max_lat={maxs[1]:.8f}\n")
         f.write(f"max_seg={maxs[2]:.1f}\n")
-        f.write(
-            "fusos="
-            + ",".join(f"{i}:{fusos[i]}" for i in range(1, 5))
-            + "\n"
-        )
 
     print(f"total de tweets: {total}")
     print(f"amostra: {N_AMOSTRA}")
     print(f"min {mins}")
     print(f"max {maxs}")
-    print(f"fusos 1..4: {fusos[1:]}")
     print(f"gravado em {pasta}")
 
 

@@ -42,6 +42,13 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--rotulos", 
+        type=Path, 
+        required=True, 
+        help="Path to the binary labels (.bin)."
+    )
+
+    parser.add_argument(
         "-o",
         "--output",
         type=Path,
@@ -112,6 +119,12 @@ def main():
     args = parse_args()
     df = pd.read_csv(args.input)
 
+    rotulos = np.fromfile(args.rotulos, dtype=np.int32)
+
+    if len(df) != len(rotulos):
+        raise ValueError(f"Tamanho incompatível: CSV ({len(df)}) vs Rótulos ({len(rotulos)})")
+
+    df["Class"] = rotulos
     required = {"Longitude", "Latitude", "Timestamp", "Timezone", "Class"}
     missing = required - set(df.columns)
     if missing:
