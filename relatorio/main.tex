@@ -1,0 +1,176 @@
+\documentclass[a4paper,12pt]{article}
+
+% Pacotes básicos
+\usepackage{fontspec}
+\setmainfont{Latin Modern Roman}
+
+\usepackage{polyglossia}
+\setmainlanguage{portuguese}
+
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{setspace}
+\usepackage{tabularx}
+\usepackage{booktabs}
+% Configuração das margens
+\geometry{top=3cm,bottom=2cm,left=3cm,right=2cm}
+
+% Comando para adicionar a Fonte nas figuras (Padrão ABNT)
+\newcommand{\fonte}[1]{
+    \vspace{-0.2cm} \begin{center} \small \textbf{Fonte:} #1 \end{center}
+}
+
+% Configuração para códigos
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour}, commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta}, numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple}, basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false, breaklines=true, captionpos=b, keepspaces=true,
+    numbers=left, numbersep=5pt, showspaces=false, showstringspaces=false,
+    showtabs=false, tabsize=2
+}
+
+\lstset{style=mystyle}
+\title{\textbf{Relatório de Implementação de DBSCAN em MPI}}
+\author{Seu Nome Aqui}
+\date{Natal, \today}
+
+\begin{document}
+
+\begin{center}
+    \thispagestyle{empty}
+    \includegraphics[scale=0.05]{Imagens/ufrn-brasao.png}
+
+    \textbf{\large Universidade Federal do Rio Grande do Norte}\\
+    \textbf{\large Sistemas Biga Data DIM0198 - 2026.2} \\
+    [1cm]
+    \vspace*{2cm}
+    {\Huge {Relatório de Implementação de DBSCAN em MPI}}
+    \\[0.5cm]
+    \large Eduardo Nestor Ferreira Marinho \\
+    \large Kael Amir Pina Paraguassu Silva \\
+    \large Matheus Leão de Carvalho \\
+    \large Samuel Morais da Rocha e Silva \\
+    [1cm]
+    \vfill
+    \normalsize Natal, \today.
+\end{center}
+
+\newpage
+
+\section{Implementação}
+
+\subsection{DBScan}
+
+\subsection{Distribuição}
+
+\subsection{Job}
+\label{subsec:job}
+
+\subsection{Saídas}
+
+\section{Resultados}
+
+\subsection{Desempenho}
+
+\subsubsection{Agregação}
+
+A tabela pura produzida em formato CSV foi agregada com o objetivo de resumir as
+métricas de tempo de execução em relação às três execuções para cada
+configuração de número de processos. O resultado é uma tabela com os seguintes
+atributos:
+
+\begin{itemize}
+    \item $N_p$ (Índice): O número de processos paralelos utilizados na execução
+          do algoritmo.
+    \item $\bar{T}_{total}$: O tempo médio total decorrido para a execução
+          completa do algoritmo considerando as repetições (em segundos).
+    \item $\bar{T}_{buscar}$: O tempo médio gasto na etapa de busca de vizinhos
+          dentro do algoritmo (em segundos).
+    \item $\bar{T}_{gather}$: O tempo médio gasto no processo de consolidação de
+          dados paralelos (operação \textit{gather}) (em segundos).
+    \item $\bar{T}_{expandir}$: O tempo médio gasto especificamente na expansão
+          dos clusters paralelos (em segundos).
+\end{itemize}
+
+A Tabela~\ref{tab:desempenho_processos} consolida os resultados obtidos.
+
+\begin{table}[h]
+    \centering
+    \caption{Métricas médias de desempenho por número de processos paralelo.}
+    \label{tab:desempenho_processos}
+    \begin{tabular}{lcccccc}
+        \toprule
+        & $\bar{T}_{total}$ & $\bar{T}_{buscar}$ & $\bar{T}_{gather}$ &
+        $\bar{T}_{expandir}$ \\
+        \
+        $N_p$ & & & & & & \\
+        \midrule
+        1 & 1.2850 & 1.2813 & 0.0023 & 0.0014 \\
+        2 & 0.6912 & 0.6871 & 0.0021 & 0.0014 \\
+        4 & 0.3313 & 0.3252 & 0.0035 & 0.0014 \\
+        8 & 0.1891 & 0.1808 & 0.0044 & 0.0017 \\
+        16 & 0.1038 & 0.0920 & 0.0058 & 0.0015 \\
+        32 & 0.1352 & 0.1010 & 0.0165 & 0.0020 \\
+        64 & 0.0962 & 0.0532 & 0.0111 & 0.0018 \\
+        128 & 0.1114 & 0.0291 & 0.0019 & 0.0019 \\
+        256 & 1.1330 & 0.0160 & 1.1086 & 0.0021 \\
+        512 & 1.1218 & 0.0084 & 0.9497 & 0.0023 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}
+    \centering
+    \caption{
+        \textit{Speedup} e Eficiência médias obtidas para o tempo total de
+        execução.
+    }
+    \label{tab:speedup}
+    \begin{tabular}{lcc}
+        \toprule
+        $N_p$ & $\bar{S}$ & $\bar{E}$ \\
+        1     &  1.0000   &  1.0000   \\
+        2     &  1.8591   &  0.9296   \\
+        4     &  3.8791   &  0.9698   \\
+        8     &  6.7955   &  0.8494   \\
+        16    &  12.3796  &  0.7737   \\
+        32    &  9.5066   &  0.2971   \\
+        64    &  13.3548  &  0.2087   \\
+        128   &  11.5318  &  0.0901   \\
+        256   &  1.1342   &  0.0044   \\
+        512   &  1.1455   &  0.0022   \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsubsection{Gráfico}
+
+De posse da agregação, foi construído um gráfico de linhas da
+Figura~\ref{fig:grafico} detalhando, para cada número de processos, o tempo
+médio total da execução da rotina e das operações que a compõe.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1.0\linewidth]{Imagens/graficos_desempenho.png}
+    \caption{\textsf{Gráfico de tempo de execução do DBScan.}}
+    \label{fig:grafico}
+\end{figure}
+
+\subsubsection{Interpretação}
+
+\subsection{\textit{Clustering}}
+
+\end{document}
