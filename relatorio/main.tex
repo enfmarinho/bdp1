@@ -74,7 +74,7 @@
 
 \subsection{DBScan}
 
-\subsection{Distribuição}
+\subsection{Distribuição entre nós}
 
 \subsection{Job}
 \label{subsec:job}
@@ -85,7 +85,7 @@
 
 \subsection{Desempenho}
 
-\subsubsection{Agregação}
+\subsubsection{Eficiência, \textit{speedup} e tempos de execução}
 
 A tabela pura produzida em formato CSV foi agregada com o objetivo de resumir as
 métricas de tempo de execução em relação às três execuções para cada
@@ -97,8 +97,7 @@ atributos:
           do algoritmo.
     \item $\bar{T}_{total}$: O tempo médio total decorrido para a execução
           completa do algoritmo considerando as repetições (em segundos).
-    \item $\bar{T}_{buscar}$: O tempo médio gasto na etapa de busca de vizinhos
-          dentro do algoritmo (em segundos).
+    \item $\bar{T}_{buscar}$: A média do maior tempo gasto na etapa de busca de vizinhos dentro do algoritmo (em segundos). Utilizamos o maior tempo para a operação de busca entre os nós por este ser o gargalo da execução distribuída.
     \item $\bar{T}_{gather}$: O tempo médio gasto no processo de consolidação de
           dados paralelos (operação \textit{gather}) (em segundos).
     \item $\bar{T}_{expandir}$: O tempo médio gasto especificamente na expansão
@@ -156,8 +155,6 @@ A Tabela~\ref{tab:desempenho_processos} consolida os resultados obtidos.
     \end{tabular}
 \end{table}
 
-\subsubsection{Gráfico}
-
 De posse da agregação, foi construído um gráfico de linhas da
 Figura~\ref{fig:grafico} detalhando, para cada número de processos, o tempo
 médio total da execução da rotina e das operações que a compõe.
@@ -169,7 +166,14 @@ médio total da execução da rotina e das operações que a compõe.
     \label{fig:grafico}
 \end{figure}
 
-\subsubsection{Interpretação}
+Dentre pontos de observação valiosos do gráfico, destacam-se:
+\begin{itemize}
+    \item O salto no tempo decorrido para a operação de \textit{gather} mediante o aumento de 128 a 256 processos. O salto é justificado pelo uso da partição \texttt{Intel-128} para a execução do \textit{job}: sua limitação de 128 núcleos faz com que a partir deste ponto, a comunicação entre nós computacionais distintos seja inevitável. Essa dominância da latência de rede sobre o tempo de execução é expressado pelo aumento no tempo dedicado à operação \textit{gather}.
+    \item O tempo decorrido para a operação de busca decai de forma quase linear com a proliferação dos processos. Isso ocorre pois esta operação é \textbf{local}, não envolvendo trocas de mensagem na rede. Ou seja, esta operação beneficia-se grandemente pelo processamento distribuído, já que a quantidade de pontos processados em cada instância reduz com a adição de processos, diminuindo, também, o esforço de cada processador. 
+    \item O tempo decorrido para a operação de busca decai de forma quase linear com a proliferação dos processos. Isso ocorre pois esta operação é \textbf{local}, não envolvendo trocas de mensagem na rede. Ou seja, esta operação beneficia-se grandemente pelo processamento distribuído, já que a quantidade de pontos processados em cada instância reduz com a adição de processos, diminuindo, também, o esforço de cadaprocessador. 
+    
+\end{itemize}  
+
 
 \subsection{\textit{Clustering}}
 
