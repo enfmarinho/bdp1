@@ -1,6 +1,9 @@
 /*
  * DBSCAN com MPI.
  *
+ * Achar vizinhos e a parte demorada, entao cada processo faz uma fatia.
+ * O processo 0 junta as listas e monta os clusters.
+ *
  * Etapas:
  * 1. O processo '0' le a amostra e envia a matriz para todos (MPI_Bcast).
  * 2. Os pontos sao divididos em fatias e cada processo calcula os vizinhos so
@@ -67,6 +70,7 @@ void fatia(int n, int nprocs, int rank, int *inicio, int *fim) {
   }
 }
 
+// Onde cada pedaco comeca quando as listas sao colocadas uma atras da outra.
 void deslocamentos(const int *contagens, int n, int *d) {
   d[0] = 0;
   for (int i = 1; i < n; i++) {
@@ -74,6 +78,7 @@ void deslocamentos(const int *contagens, int n, int *d) {
   }
 }
 
+// Arquivo binario: n, d e depois a matriz de doubles.
 double *ler_amostra(const char *caminho, int *n, int *d) {
   FILE *f = fopen(caminho, "rb");
   if (!f) {
@@ -185,6 +190,7 @@ int main(int argc, char **argv) {
 
   int n = 0, d = 0;
   double *x = NULL;
+  // so o processo 0 le. os outros recebem a matriz no broadcast
   if (rank == 0) {
     if (teste) {
       x = dados_teste(&n, &d);
@@ -197,6 +203,7 @@ int main(int argc, char **argv) {
   MPI_Barrier(MPI_COMM_WORLD);
   double t0 = MPI_Wtime();
 
+  // todos ficam com a matriz inteira, muda so qual fatia cada um processa
   MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&d, 1, MPI_INT, 0, MPI_COMM_WORLD);
   if (rank != 0) {
@@ -215,6 +222,7 @@ int main(int argc, char **argv) {
     contagens = malloc(local * sizeof(int));
   }
 
+  // cada processo calcula vizinhos apenas dos seus pontos
   double t_busca0 = MPI_Wtime();
   if (local > 0) {
     nplano = calcular_vizinhos(x, n, d, inicio, fim, eps, contagens, &plano);
@@ -243,6 +251,7 @@ int main(int argc, char **argv) {
   }
 
   int dummy = 0;
+  // devolve as listas para o processo 0
   double t_junta0 = MPI_Wtime();
   MPI_Gatherv(local > 0 ? contagens : &dummy, local, MPI_INT, grau, recv_pts,
               displs_pts, MPI_INT, 0, MPI_COMM_WORLD);
@@ -254,6 +263,7 @@ int main(int argc, char **argv) {
   int n_clusters = 0;
   double t_exp = 0.0;
   if (rank == 0) {
+    // a expansao e sequencial
     rotulo = malloc(n * sizeof(int));
     double t_exp0 = MPI_Wtime();
     n_clusters = expandir(grau, plano_todo, n, min_pts, rotulo);

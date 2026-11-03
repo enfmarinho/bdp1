@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+/*
+ * Acha quem esta a no maximo eps de cada ponto da fatia [inicio, fim).
+ * Compara com todos os pontos. O proprio ponto entra na lista.
+ */
 int calcular_vizinhos(const double *x, int n, int d, int inicio, int fim,
                       double eps, int *contagens, int **plano_out) {
   double eps2 = eps * eps;
@@ -29,6 +33,7 @@ int calcular_vizinhos(const double *x, int n, int d, int inicio, int fim,
         double df = pi[t] - pj[t];
         s += df * df;
       }
+      // compara o quadrado para nao precisar da raiz
       if (s <= eps2) {
         tmp[c++] = j;
       }
@@ -55,8 +60,14 @@ int calcular_vizinhos(const double *x, int n, int d, int inicio, int fim,
   return nplano;
 }
 
+/*
+ * Monta os clusters a partir das listas de vizinhos.
+ * Ponto com pelo menos min_pts vizinhos e central, abre um cluster
+ * e segue a fila. O resto fica com rotulo -1 (ruido).
+ */
 int expandir(const int *grau, const int *plano, int n, int min_pts,
              int *rotulo) {
+  // off[i] diz onde comeca a lista do ponto i dentro de plano
   int *off = malloc((n + 1) * sizeof(int));
   off[0] = 0;
   for (int i = 0; i < n; i++) {
@@ -81,6 +92,8 @@ int expandir(const int *grau, const int *plano, int n, int min_pts,
     int head = 0;
     int tail = 0;
 
+    // comeca pelos vizinhos deste ponto central
+
     for (int t = off[i]; t < off[i + 1]; t++) {
       int p = plano[t];
       if (!viu[p]) {
@@ -94,6 +107,7 @@ int expandir(const int *grau, const int *plano, int n, int min_pts,
       if (rotulo[q] == -1) {
         rotulo[q] = cluster;
       }
+      // borda entra no cluster, mas nao puxa mais ninguem
       if (grau[q] < min_pts) {
         continue;
       }
