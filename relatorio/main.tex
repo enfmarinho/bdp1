@@ -70,16 +70,52 @@
 
 \newpage
 
-\section{Implementação}
+\section{Implementação} 
 
-\subsection{DBScan}
+\subsection{DBScan} 
 
-\subsection{Distribuição entre nós}
+A implementação do algoritmo DBSCAN foi dividida em duas fases principais: o mapeamento de vizinhança e a expansão dos agrupamentos (\textit{clusters}). 
 
-\subsection{Job}
-\label{subsec:job}
+Na primeira etapa (\texttt{calcular\_vizinhos}), o algoritmo avalia a proximidade espacial entre os pontos de entrada em $d$ dimensões utilizando a distância euclidiana em relação ao raio de alcance $\varepsilon$ (\texttt{eps}). %
+Para otimizar o processamento e facilitar a comunicação em rede, os vizinhos identificados para cada ponto são agrupados em um único vetor contíguo na memória (\texttt{plano}), em vez de serem armazenados em listas encadeadas independentes. Além disso, o vetor é acompanhado por um outro vetor auxiliar que registra a quantidade de vizinhos de cada ponto (\texttt{contagens}). 
 
-\subsection{Saídas}
+Na segunda etapa (\texttt{expandir}), os pontos são classificados a partir da densidade de sua vizinhança. 
+Todos os registros iniciam rotulados como ruído (\texttt{-1}). 
+O algoritmo então percorre a base de dados em busca de pontos centrais, definidos como aqueles que possuem ao menos \texttt{min\_pts} vizinhos. 
+Sempre que um ponto central ainda não visitado é encontrado, um novo agrupamento é iniciado e expandido iterativamente por meio de uma busca em largura, incorporando todos os pontos densamente alcançáveis a partir dele até que o agrupamento esteja completo. 
+
+\subsection{Distribuição} 
+
+Como a etapa de busca de vizinhos compara cada ponto com toda a base de dados, a paralelização com MPI concentrou-se em distribuir essa carga de trabalho entre múltiplos processos seguindo o modelo Mestre-Trabalhador: 
+
+\begin{enumerate}
+    \item \textbf{Leitura e Difusão (\textit{Broadcast}):} O processo mestre (\textit{rank} 0) carrega o arquivo binário contendo a matriz de dados normalizados e transmite as dimensões e as coordenadas completas para todos os demais processos via \texttt{MPI\_Bcast}. %
+    \item \textbf{Particionamento e Busca Paralela:} O conjunto total de $n$ pontos é dividido de forma balanceada em fatias contíguas entre os processos disponíveis. 
+    Cada processo calcula, de maneira independente e sem necessidade de comunicação intermediária, as listas de vizinhos apenas para os pontos pertencentes à sua fatia local. 
+    \item \textbf{Consolidação (\textit{Gather}):} Finalizada a busca local, os processos compartilham o tamanho das listas geradas (\texttt{MPI\_Allgather}) e enviam seus vetores locais de contagem e de vizinhos de volta ao processo mestre por meio de chamadas \texttt{MPI\_Gatherv}, que reconstroem o grafo completo de adjacências na memória do \textit{rank} 0. 
+    \item \textbf{Expansão Sequencial:} Com a estrutura global consolidada, o processo mestre executa a rotina de expansão dos agrupamentos e contabiliza os resultados finais. 
+\end{enumerate}
+
+O monitoramento de desempenho é realizado com barreiras de sincronização (\texttt{MPI\_Barrier}) e cronometragem (\texttt{MPI\_Wtime}), isolando os tempos gastos na busca paralela (consolidado pelo maior tempo entre os processos via \texttt{MPI\_Reduce}), na junção dos dados pela rede e na expansão final. 
+
+\subsection{Job} 
+\label{subsec:job} 
+
+Os testes de desempenho e escalabilidade foram automatizados no gerenciador de filas Slurm por meio do script \texttt{job\_dbscan.sh}. 
+O ambiente de execução foi dimensionado na partição \texttt{intel-128} com a alocação de 16 nós computacionais e até 32 tarefas por nó (1 CPU por tarefa), totalizando até 512 processos simultâneos e tempo limite de 30 minutos. 
+
+A bateria experimental executou o algoritmo sobre o arquivo \texttt{dados/amostra.bin} utilizando os parâmetros fixos $\varepsilon = 0{,}035$ e $\text{MinPts} = 30$. 
+Para avaliar o comportamento do código em diferentes escalas de paralelismo, o número de processos ($P$) foi variado em potências de dois ($1, 2, 4, 8, 16, 32, 64, 128, 256$ e $512$), realizando-se 3 repetições consecutivas para cada configuração a fim de obter as médias. 
+
+\subsection{Saídas} 
+
+Ao término de cada execução, o processo mestre consolida as métricas e gera os artefatos de saída na pasta \texttt{resultados/}: %
+
+\begin{itemize}
+    \item \textbf{Métricas de Desempenho (\texttt{tempos.csv}):} Arquivo tabular incrementado a cada execução com o número de processos, o índice da repetição, o tempo total, os tempos parciais de cada etapa (busca, junção e expansão) e os totais de agrupamentos e pontos de ruído. 
+    \item \textbf{Rótulos de Agrupamento (\texttt{rotulos\_p<nprocs>.bin}):} Arquivo binário contendo o vetor de classes atribuídas a cada um dos $n$ pontos da amostra, utilizado posteriormente pelos scripts de visualização. 
+    \item \textbf{Resumo da Execução (\texttt{resumo.json}):} Gerado na execução de referência com 1 processo, documenta os hiperparâmetros utilizados, a quantidade de agrupamentos e ruídos encontrados e o tamanho dos 10 maiores \textit{clusters}. 
+\end{itemize}
 
 \section{Resultados}
 
