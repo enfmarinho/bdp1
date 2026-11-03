@@ -49,5 +49,5 @@ sbatch job_dbscan.sh
 
 ```bash
 # Replace rotulos_p8.bin with the file corresponding to the number of processes used
-python3 analise/plot_tweet_analisys.py dados/amostra_original.csv --rotulos resultados/rotulos_p8.bin -o resultados/animacao_dbscan.gif
+python3 src/analise/plot_tweet_analisys.py dados/amostra_original.csv --rotulos resultados/rotulos_p8.bin -o resultados/animacao_dbscan.gif
 ```
