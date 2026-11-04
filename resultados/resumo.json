@@ -1,9 +1,9 @@
 {
   "n": 25000,
-  "eps": 0.0350,
-  "min_pts": 30,
-  "clusters": 62,
-  "ruido": 8466,
-  "maiores": [8443, 1548, 753, 478, 385, 322, 308, 237, 229, 200],
-  "tempo_1proc_desta_execucao": 1.263230
+  "eps": 0.0650,
+  "min_pts": 10,
+  "clusters": 14,
+  "ruido": 164,
+  "maiores": [20512, 3194, 618, 255, 143, 21, 15, 15, 13, 13],
+  "tempo_1proc_desta_execucao": 1.303610
 }
