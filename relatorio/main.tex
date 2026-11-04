@@ -54,7 +54,7 @@
     \includegraphics[scale=0.05]{Imagens/ufrn-brasao.png}
 
     \textbf{\large Universidade Federal do Rio Grande do Norte}\\
-    \textbf{\large Sistemas Biga Data DIM0198 - 2026.2} \\
+    \textbf{\large Sistemas Big Data DIM0198 - 2026.2} \\
     [1cm]
     \vspace*{2cm}
     {\Huge {Relatório de Implementação de DBSCAN em MPI}}
@@ -78,12 +78,13 @@ A implementação do algoritmo DBSCAN foi dividida em duas fases principais: o
 mapeamento de vizinhança e a expansão dos agrupamentos (\textit{clusters}).
 
 Na primeira etapa (\texttt{calcular\_vizinhos}), o algoritmo mede a distância
-euclidiana entre os pontos em $d$ dimensões e guarda quem está no $\varepsilon$ (\texttt{eps}) máximo. O próprio ponto entra na lista.
-Para otimizar o processamento e facilitar a comunicação em rede, os vizinhos
-identificados para cada ponto são agrupados em um único vetor contíguo na
-memória (\texttt{plano}), em vez de serem armazenados em listas encadeadas
-independentes. Além disso, o vetor é acompanhado por um outro vetor auxiliar que
-registra a quantidade de vizinhos de cada ponto (\texttt{contagens}).
+euclidiana entre os pontos em $d$ dimensões e guarda quem está no $\varepsilon$
+(\texttt{eps}) máximo. O próprio ponto entra na lista. Para otimizar o
+processamento e facilitar a comunicação em rede, os vizinhos identificados para
+cada ponto são agrupados em um único vetor contíguo na memória (\texttt{plano}),
+em vez de serem armazenados em listas encadeadas independentes. Além disso, o
+vetor é acompanhado por um outro vetor auxiliar que registra a quantidade de
+vizinhos de cada ponto (\texttt{contagens}).
 
 Na segunda etapa (\texttt{expandir}), os pontos são classificados a partir da
 densidade de sua vizinhança. Todos os registros iniciam rotulados como ruído
@@ -217,7 +218,16 @@ Para uma análise mais aprofundada, foram calculados os valores de
 $\bar{T}_{total}$ para as diferentes configurações de números de processos.
 
 As valores da análise estão visíveis na Tabela~\ref{tab:speedup}, e organizados
-graficamente na
+graficamente na Figura~\ref{fig:speedup}. É possível observar o decaimento do
+\textit{speedup} em relação ao comportamento ótimo - a manutenção do crescimento
+linear - a partir da distribuição em 4 processos, ponto no qual o tempo dedicado
+à operação de \textit{gather} aumenta sua taxa de crescimento, como pode ser
+visto em seguida na Figura~\ref{fig:grafico}.
+
+Vale apontar que, de acordo com a progressão da eficiência calculada na
+Figura~\ref{fig:speedup}, o processamento chega ao patamar de execução
+eficiência super-linear, com o aproveitamento de recursos de hardware
+ultrapassando a expectativa linear ótima de $\bar{E} = 1$.
 
 \begin{table}
     \centering
@@ -247,12 +257,12 @@ graficamente na
     \centering
     \includegraphics[width=1.0\linewidth]{Imagens/graficos_speedup_eficiencia.png}
     \caption{\textsf{Gráficos de \textit{speedup} e eficiência médios.}}
-    \label{fig:grafico}
+    \label{fig:speedup}
 \end{figure}
 
-De posse da agregação, foi construído um gráfico de linhas da
-Figura~\ref{fig:grafico} detalhando, para cada número de processos, o tempo
-médio total da execução da rotina e das operações que a compõe.
+De posse da Tabela~\ref{tab:desempenho_processos}, foi construído um gráfico de
+linhas na Figura~\ref{fig:grafico} detalhando, para cada número de processos, o
+tempo médio total da execução da rotina e das operações que a compõe.
 
 \begin{figure}[h]
     \centering
@@ -263,20 +273,34 @@ médio total da execução da rotina e das operações que a compõe.
 
 Dentre pontos de observação valiosos do gráfico, destacam-se:
 \begin{itemize}
-    \item O salto no tempo decorrido para a operação de \textit{gather} mediante
-          o aumento de 128 a 256 processos. O salto é justificado pelo uso da
-          partição \texttt{Intel-128} para a execução do \textit{job}: sua
-          limitação de 128 núcleos faz com que a partir deste ponto, a
-          comunicação entre nós computacionais distintos seja inevitável. Essa
-          dominância da latência de rede sobre o tempo de execução é expressado
-          pelo aumento no tempo dedicado à operação \textit{gather}.
-    \item O tempo decorrido para a operação de busca decai de forma quase linear
-          com a proliferação dos processos. Isso ocorre pois esta operação é
-          \textbf{local}, não envolvendo trocas de mensagem na rede. Ou seja,
-          esta operação beneficia-se grandemente pelo processamento distribuído,
-          já que a quantidade de pontos processados em cada instância reduz com
-          a adição de processos, diminuindo, também, o esforço de cada
-          processador.
+    \item O tempo decorrido médio para a operação de \textit{gather} cresce em
+          picos. Até os 32 processos, o custo desta etapa evolui de maneira
+          quase linear, mas, a partir deste ponto, o crescimento é dado em
+          saltos, sendo a transição dos 128 aos 256 processos o mais
+          vertiginoso. Este comportamento deve-se à necessidade de comunicação
+          entre diferentes nós da rede, já que a partição \texttt{intel-128}
+          usada para a execução do \textit{job} possui processador com 32
+          núcleos. O trabalho, que antes poderia ser concentrado em um único
+          ambiente, precisa ser distribuído pela rede, adicionando um componente
+          de latência de comunicação. Além da latência de rede, a operação de
+          \textit{gather} no MPI implica no nó mestre receber volumes de dados
+          dos demais; para um número elevado de processos, é possível haver
+          saturação de rede I\_O.
+
+    \item O tempo médio total da execução do algoritmo cresce de maneira
+          inexpressiva de 256 a 512 processos, com o tempo referente ao
+          \textit{gather} diminuindo entre as duas execuções. Análises mais
+          aprofundadas sobre a infraestrutura física das partições utilizadas e
+          dos parâmetros do \textit{job} podem revelar relações que expliquem
+          este comportamento.
+
+    \item O tempo decorrido médio para a operação de busca decai de forma quase
+          linear com a proliferação dos processos. Isso ocorre pois esta
+          operação é \textbf{local}, não envolvendo trocas de mensagem na rede.
+          Ou seja, esta operação beneficia-se grandemente pelo processamento
+          distribuído, já que a quantidade de pontos processados em cada
+          instância reduz com a adição de processos, diminuindo, também, o
+          esforço de cada processador.
 \end{itemize}
 
 \newpage
