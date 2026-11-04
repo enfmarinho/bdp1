@@ -70,51 +70,94 @@
 
 \newpage
 
-\section{Implementação} 
+\section{Implementação}
 
-\subsection{DBScan} 
+\subsection{DBScan}
 
-A implementação do algoritmo DBSCAN foi dividida em duas fases principais: o mapeamento de vizinhança e a expansão dos agrupamentos (\textit{clusters}). 
+A implementação do algoritmo DBSCAN foi dividida em duas fases principais: o
+mapeamento de vizinhança e a expansão dos agrupamentos (\textit{clusters}).
 
-Na primeira etapa (\texttt{calcular\_vizinhos}), o algoritmo mede a distância euclidiana entre os pontos em $d$ dimensões e guarda quem está a no máximo $\varepsilon$ (\texttt{eps}). O próprio ponto entra na lista. %
-Para otimizar o processamento e facilitar a comunicação em rede, os vizinhos identificados para cada ponto são agrupados em um único vetor contíguo na memória (\texttt{plano}), em vez de serem armazenados em listas encadeadas independentes. Além disso, o vetor é acompanhado por um outro vetor auxiliar que registra a quantidade de vizinhos de cada ponto (\texttt{contagens}). 
+Na primeira etapa (\texttt{calcular\_vizinhos}), o algoritmo mede a distância
+euclidiana entre os pontos em $d$ dimensões e guarda quem está a no máximo
+$\varepsilon$ (\texttt{eps}). O próprio ponto entra na lista. %
+Para otimizar o processamento e facilitar a comunicação em rede, os vizinhos
+identificados para cada ponto são agrupados em um único vetor contíguo na
+memória (\texttt{plano}), em vez de serem armazenados em listas encadeadas
+independentes. Além disso, o vetor é acompanhado por um outro vetor auxiliar que
+registra a quantidade de vizinhos de cada ponto (\texttt{contagens}).
 
-Na segunda etapa (\texttt{expandir}), os pontos são classificados a partir da densidade de sua vizinhança. 
-Todos os registros iniciam rotulados como ruído (\texttt{-1}). 
-O algoritmo então percorre a base em busca de pontos centrais, os que têm ao menos \texttt{min\_pts} vizinhos nessa lista. 
-Sempre que acha um ponto central ainda sem rótulo, abre um agrupamento e o expande em largura: vizinho de ponto central entra no grupo e, se também for central, a busca continua a partir dele. 
+Na segunda etapa (\texttt{expandir}), os pontos são classificados a partir da
+densidade de sua vizinhança. Todos os registros iniciam rotulados como ruído
+(\texttt{-1}). O algoritmo então percorre a base em busca de pontos centrais, os
+que têm ao menos \texttt{min\_pts} vizinhos nessa lista. Sempre que acha um
+ponto central ainda sem rótulo, abre um agrupamento e o expande em largura:
+vizinho de ponto central entra no grupo e, se também for central, a busca
+continua a partir dele.
 
-\subsection{Distribuição} 
+\subsection{Distribuição}
 
-Como a busca de vizinhos compara cada ponto com toda a base, o MPI divide essa carga em fatias. Todos os processos calculam a sua parte, inclusive o de \textit{rank} 0: 
+Como a busca de vizinhos compara cada ponto com toda a base, o MPI divide essa
+carga em fatias. Todos os processos calculam a sua parte, inclusive o de
+\textit{rank} 0:
 
 \begin{enumerate}
-    \item \textbf{Leitura e Difusão (\textit{Broadcast}):} O processo de \textit{rank} 0 carrega o arquivo binário com a matriz normalizada e envia as dimensões e a matriz inteira aos demais com \texttt{MPI\_Bcast}. %
-    \item \textbf{Particionamento e Busca Paralela:} O conjunto total de $n$ pontos é dividido de forma balanceada em fatias contíguas entre os processos disponíveis. 
-    Cada processo calcula, de maneira independente e sem necessidade de comunicação intermediária, as listas de vizinhos apenas para os pontos pertencentes à sua fatia local. 
-    \item \textbf{Consolidação (\textit{Gather}):} Os processos trocam o tamanho das listas (\texttt{MPI\_Allgather}) e devolvem as contagens e os vizinhos ao processo 0 com \texttt{MPI\_Gatherv}. 
-    \item \textbf{Expansão Sequencial:} Com as listas reunidas, só o processo 0 executa \texttt{expandir}. O resultado não depende do número de processos, porque essa etapa é sempre a mesma. 
+    \item \textbf{Leitura e Difusão (\textit{Broadcast}):} O processo de
+          \textit{rank} 0 carrega o arquivo binário com a matriz normalizada e
+          envia as dimensões e a matriz inteira aos demais com
+          \texttt{MPI\_Bcast}. %
+    \item \textbf{Particionamento e Busca Paralela:} O conjunto total de $n$
+          pontos é dividido de forma balanceada em fatias contíguas entre os
+          processos disponíveis. Cada processo calcula, de maneira independente
+          e sem necessidade de comunicação intermediária, as listas de vizinhos
+          apenas para os pontos pertencentes à sua fatia local.
+    \item \textbf{Consolidação (\textit{Gather}):} Os processos trocam o tamanho
+          das listas (\texttt{MPI\_Allgather}) e devolvem as contagens e os
+          vizinhos ao processo 0 com \texttt{MPI\_Gatherv}.
+    \item \textbf{Expansão Sequencial:} Com as listas reunidas, só o processo 0
+          executa \texttt{expandir}. O resultado não depende do número de
+          processos, porque essa etapa é sempre a mesma.
 \end{enumerate}
 
-O monitoramento de desempenho é realizado com barreiras de sincronização (\texttt{MPI\_Barrier}) e cronometragem (\texttt{MPI\_Wtime}), isolando os tempos gastos na busca paralela (consolidado pelo maior tempo entre os processos via \texttt{MPI\_Reduce}), na junção dos dados pela rede e na expansão final. 
+O monitoramento de desempenho é realizado com barreiras de sincronização
+(\texttt{MPI\_Barrier}) e cronometragem (\texttt{MPI\_Wtime}), isolando os
+tempos gastos na busca paralela (consolidado pelo maior tempo entre os processos
+via \texttt{MPI\_Reduce}), na junção dos dados pela rede e na expansão final.
 
-\subsection{Job} 
-\label{subsec:job} 
+\subsection{Job}
+\label{subsec:job}
 
-Os testes de desempenho e escalabilidade foram automatizados no gerenciador de filas Slurm por meio do script \texttt{job\_dbscan.sh}. 
-O ambiente de execução foi dimensionado na partição \texttt{intel-128} com a alocação de 16 nós computacionais e até 32 tarefas por nó (1 CPU por tarefa), totalizando até 512 processos simultâneos e tempo limite de 30 minutos. 
+Os testes de desempenho e escalabilidade foram automatizados no gerenciador de
+filas Slurm por meio do script \texttt{job\_dbscan.sh}. O ambiente de execução
+foi dimensionado na partição \texttt{intel-128} com a alocação de 16 nós
+computacionais e até 32 tarefas por nó (1 CPU por tarefa), totalizando até 512
+processos simultâneos e tempo limite de 30 minutos.
 
-A bateria experimental executou o algoritmo sobre o arquivo \texttt{dados/amostra.bin} utilizando os parâmetros fixos $\varepsilon = 0{,}035$ e $\text{MinPts} = 30$. 
-Para avaliar o comportamento do código em diferentes escalas de paralelismo, o número de processos ($P$) foi variado em potências de dois ($1, 2, 4, 8, 16, 32, 64, 128, 256$ e $512$), realizando-se 3 repetições consecutivas para cada configuração a fim de obter as médias. 
+A bateria experimental executou o algoritmo sobre o arquivo
+\texttt{dados/amostra.bin} utilizando os parâmetros fixos
+$\varepsilon = 0{,}035$ e $\text{MinPts} = 30$. Para avaliar o comportamento do
+código em diferentes escalas de paralelismo, o número de processos ($P$) foi
+variado em potências de dois ($1, 2, 4, 8, 16, 32, 64, 128, 256$ e $512$),
+realizando-se 3 repetições consecutivas para cada configuração a fim de obter as
+médias.
 
-\subsection{Saídas} 
+\subsection{Saídas}
 
-Ao término de cada execução, o processo mestre consolida as métricas e gera os artefatos de saída na pasta \texttt{resultados/}: %
+Ao término de cada execução, o processo mestre consolida as métricas e gera os
+artefatos de saída na pasta \texttt{resultados/}: %
 
 \begin{itemize}
-    \item \textbf{Métricas de Desempenho (\texttt{tempos.csv}):} Arquivo tabular incrementado a cada execução com o número de processos, o índice da repetição, o tempo total, os tempos parciais de cada etapa (busca, junção e expansão) e os totais de agrupamentos e pontos de ruído. 
-    \item \textbf{Rótulos de Agrupamento (\texttt{rotulos\_p<nprocs>.bin}):} Arquivo binário contendo o vetor de classes atribuídas a cada um dos $n$ pontos da amostra, utilizado posteriormente pelos scripts de visualização. 
-    \item \textbf{Resumo da Execução (\texttt{resumo.json}):} Gerado na execução de referência com 1 processo, documenta os hiperparâmetros utilizados, a quantidade de agrupamentos e ruídos encontrados e o tamanho dos 10 maiores \textit{clusters}. 
+    \item \textbf{Métricas de Desempenho (\texttt{tempos.csv}):} Arquivo tabular
+          incrementado a cada execução com o número de processos, o índice da
+          repetição, o tempo total, os tempos parciais de cada etapa (busca,
+          junção e expansão) e os totais de agrupamentos e pontos de ruído.
+    \item \textbf{Rótulos de Agrupamento (\texttt{rotulos\_p<nprocs>.bin}):}
+          Arquivo binário contendo o vetor de classes atribuídas a cada um dos
+          $n$ pontos da amostra, utilizado posteriormente pelos scripts de
+          visualização.
+    \item \textbf{Resumo da Execução (\texttt{resumo.json}):} Gerado na execução
+          de referência com 1 processo, documenta os hiperparâmetros utilizados,
+          a quantidade de agrupamentos e ruídos encontrados e o tamanho dos 10
+          maiores \textit{clusters}.
 \end{itemize}
 
 \section{Resultados}
@@ -133,7 +176,10 @@ atributos:
           do algoritmo.
     \item $\bar{T}_{total}$: O tempo médio total decorrido para a execução
           completa do algoritmo considerando as repetições (em segundos).
-    \item $\bar{T}_{buscar}$: A média do maior tempo gasto na etapa de busca de vizinhos dentro do algoritmo (em segundos). Utilizamos o maior tempo para a operação de busca entre os nós por este ser o gargalo da execução distribuída.
+    \item $\bar{T}_{buscar}$: A média do maior tempo gasto na etapa de busca de
+          vizinhos dentro do algoritmo (em segundos). Utilizamos o maior tempo
+          para a operação de busca entre os nós por este ser o gargalo da
+          execução distribuída.
     \item $\bar{T}_{gather}$: O tempo médio gasto no processo de consolidação de
           dados paralelos (operação \textit{gather}) (em segundos).
     \item $\bar{T}_{expandir}$: O tempo médio gasto especificamente na expansão
@@ -204,12 +250,21 @@ médio total da execução da rotina e das operações que a compõe.
 
 Dentre pontos de observação valiosos do gráfico, destacam-se:
 \begin{itemize}
-    \item O salto no tempo decorrido para a operação de \textit{gather} mediante o aumento de 128 a 256 processos. O salto é justificado pelo uso da partição \texttt{Intel-128} para a execução do \textit{job}: sua limitação de 128 núcleos faz com que a partir deste ponto, a comunicação entre nós computacionais distintos seja inevitável. Essa dominância da latência de rede sobre o tempo de execução é expressado pelo aumento no tempo dedicado à operação \textit{gather}.
-    \item O tempo decorrido para a operação de busca decai de forma quase linear com a proliferação dos processos. Isso ocorre pois esta operação é \textbf{local}, não envolvendo trocas de mensagem na rede. Ou seja, esta operação beneficia-se grandemente pelo processamento distribuído, já que a quantidade de pontos processados em cada instância reduz com a adição de processos, diminuindo, também, o esforço de cada processador. 
-    \item O tempo decorrido para a operação de busca decai de forma quase linear com a proliferação dos processos. Isso ocorre pois esta operação é \textbf{local}, não envolvendo trocas de mensagem na rede. Ou seja, esta operação beneficia-se grandemente pelo processamento distribuído, já que a quantidade de pontos processados em cada instância reduz com a adição de processos, diminuindo, também, o esforço de cadaprocessador. 
-    
-\end{itemize}  
-
+    \item O salto no tempo decorrido para a operação de \textit{gather} mediante
+          o aumento de 128 a 256 processos. O salto é justificado pelo uso da
+          partição \texttt{Intel-128} para a execução do \textit{job}: sua
+          limitação de 128 núcleos faz com que a partir deste ponto, a
+          comunicação entre nós computacionais distintos seja inevitável. Essa
+          dominância da latência de rede sobre o tempo de execução é expressado
+          pelo aumento no tempo dedicado à operação \textit{gather}.
+    \item O tempo decorrido para a operação de busca decai de forma quase linear
+          com a proliferação dos processos. Isso ocorre pois esta operação é
+          \textbf{local}, não envolvendo trocas de mensagem na rede. Ou seja,
+          esta operação beneficia-se grandemente pelo processamento distribuído,
+          já que a quantidade de pontos processados em cada instância reduz com
+          a adição de processos, diminuindo, também, o esforço de cada
+          processador.
+\end{itemize}
 
 \subsection{\textit{Clustering}}
 
