@@ -76,24 +76,24 @@
 
 A implementação do algoritmo DBSCAN foi dividida em duas fases principais: o mapeamento de vizinhança e a expansão dos agrupamentos (\textit{clusters}). 
 
-Na primeira etapa (\texttt{calcular\_vizinhos}), o algoritmo avalia a proximidade espacial entre os pontos de entrada em $d$ dimensões utilizando a distância euclidiana em relação ao raio de alcance $\varepsilon$ (\texttt{eps}). %
+Na primeira etapa (\texttt{calcular\_vizinhos}), o algoritmo mede a distância euclidiana entre os pontos em $d$ dimensões e guarda quem está a no máximo $\varepsilon$ (\texttt{eps}). O próprio ponto entra na lista. %
 Para otimizar o processamento e facilitar a comunicação em rede, os vizinhos identificados para cada ponto são agrupados em um único vetor contíguo na memória (\texttt{plano}), em vez de serem armazenados em listas encadeadas independentes. Além disso, o vetor é acompanhado por um outro vetor auxiliar que registra a quantidade de vizinhos de cada ponto (\texttt{contagens}). 
 
 Na segunda etapa (\texttt{expandir}), os pontos são classificados a partir da densidade de sua vizinhança. 
 Todos os registros iniciam rotulados como ruído (\texttt{-1}). 
-O algoritmo então percorre a base de dados em busca de pontos centrais, definidos como aqueles que possuem ao menos \texttt{min\_pts} vizinhos. 
-Sempre que um ponto central ainda não visitado é encontrado, um novo agrupamento é iniciado e expandido iterativamente por meio de uma busca em largura, incorporando todos os pontos densamente alcançáveis a partir dele até que o agrupamento esteja completo. 
+O algoritmo então percorre a base em busca de pontos centrais, os que têm ao menos \texttt{min\_pts} vizinhos nessa lista. 
+Sempre que acha um ponto central ainda sem rótulo, abre um agrupamento e o expande em largura: vizinho de ponto central entra no grupo e, se também for central, a busca continua a partir dele. 
 
 \subsection{Distribuição} 
 
-Como a etapa de busca de vizinhos compara cada ponto com toda a base de dados, a paralelização com MPI concentrou-se em distribuir essa carga de trabalho entre múltiplos processos seguindo o modelo Mestre-Trabalhador: 
+Como a busca de vizinhos compara cada ponto com toda a base, o MPI divide essa carga em fatias. Todos os processos calculam a sua parte, inclusive o de \textit{rank} 0: 
 
 \begin{enumerate}
-    \item \textbf{Leitura e Difusão (\textit{Broadcast}):} O processo mestre (\textit{rank} 0) carrega o arquivo binário contendo a matriz de dados normalizados e transmite as dimensões e as coordenadas completas para todos os demais processos via \texttt{MPI\_Bcast}. %
+    \item \textbf{Leitura e Difusão (\textit{Broadcast}):} O processo de \textit{rank} 0 carrega o arquivo binário com a matriz normalizada e envia as dimensões e a matriz inteira aos demais com \texttt{MPI\_Bcast}. %
     \item \textbf{Particionamento e Busca Paralela:} O conjunto total de $n$ pontos é dividido de forma balanceada em fatias contíguas entre os processos disponíveis. 
     Cada processo calcula, de maneira independente e sem necessidade de comunicação intermediária, as listas de vizinhos apenas para os pontos pertencentes à sua fatia local. 
-    \item \textbf{Consolidação (\textit{Gather}):} Finalizada a busca local, os processos compartilham o tamanho das listas geradas (\texttt{MPI\_Allgather}) e enviam seus vetores locais de contagem e de vizinhos de volta ao processo mestre por meio de chamadas \texttt{MPI\_Gatherv}, que reconstroem o grafo completo de adjacências na memória do \textit{rank} 0. 
-    \item \textbf{Expansão Sequencial:} Com a estrutura global consolidada, o processo mestre executa a rotina de expansão dos agrupamentos e contabiliza os resultados finais. 
+    \item \textbf{Consolidação (\textit{Gather}):} Os processos trocam o tamanho das listas (\texttt{MPI\_Allgather}) e devolvem as contagens e os vizinhos ao processo 0 com \texttt{MPI\_Gatherv}. 
+    \item \textbf{Expansão Sequencial:} Com as listas reunidas, só o processo 0 executa \texttt{expandir}. O resultado não depende do número de processos, porque essa etapa é sempre a mesma. 
 \end{enumerate}
 
 O monitoramento de desempenho é realizado com barreiras de sincronização (\texttt{MPI\_Barrier}) e cronometragem (\texttt{MPI\_Wtime}), isolando os tempos gastos na busca paralela (consolidado pelo maior tempo entre os processos via \texttt{MPI\_Reduce}), na junção dos dados pela rede e na expansão final. 
