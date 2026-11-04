@@ -78,8 +78,7 @@ A implementação do algoritmo DBSCAN foi dividida em duas fases principais: o
 mapeamento de vizinhança e a expansão dos agrupamentos (\textit{clusters}).
 
 Na primeira etapa (\texttt{calcular\_vizinhos}), o algoritmo mede a distância
-euclidiana entre os pontos em $d$ dimensões e guarda quem está a no máximo
-$\varepsilon$ (\texttt{eps}). O próprio ponto entra na lista. %
+euclidiana entre os pontos em $d$ dimensões e guarda quem está no $\varepsilon$ (\texttt{eps}) máximo. O próprio ponto entra na lista.
 Para otimizar o processamento e facilitar a comunicação em rede, os vizinhos
 identificados para cada ponto são agrupados em um único vetor contíguo na
 memória (\texttt{plano}), em vez de serem armazenados em listas encadeadas
@@ -280,6 +279,15 @@ Dentre pontos de observação valiosos do gráfico, destacam-se:
           processador.
 \end{itemize}
 
+\newpage
+
 \subsection{\textit{Clustering}}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1.1\linewidth]{Imagens/clustering.png}
+    \caption{\textsf{Exemplo de clustering.}}
+    \label{fig:clustering}
+\end{figure}
 
 \end{document}

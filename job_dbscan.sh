@@ -14,8 +14,8 @@ mkdir -p resultados
 
 echo "=== Execucao Principal e Benchmark de Escalabilidade ==="
 ARQUIVO="dados/amostra.bin"
-EPS="0.035"
-MIN_PTS="30"
+EPS="0.065"
+MIN_PTS="10"
 REPETICOES=3
 
 # testa a escalabilidade com diferentes números de processos
