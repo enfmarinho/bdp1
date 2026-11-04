@@ -199,19 +199,26 @@ A Tabela~\ref{tab:desempenho_processos} consolida os resultados obtidos.
         \
         $N_p$ & & & & & & \\
         \midrule
-        1 & 1.2850 & 1.2813 & 0.0023 & 0.0014 \\
-        2 & 0.6912 & 0.6871 & 0.0021 & 0.0014 \\
-        4 & 0.3313 & 0.3252 & 0.0035 & 0.0014 \\
-        8 & 0.1891 & 0.1808 & 0.0044 & 0.0017 \\
-        16 & 0.1038 & 0.0920 & 0.0058 & 0.0015 \\
-        32 & 0.1352 & 0.1010 & 0.0165 & 0.0020 \\
-        64 & 0.0962 & 0.0532 & 0.0111 & 0.0018 \\
-        128 & 0.1114 & 0.0291 & 0.0019 & 0.0019 \\
-        256 & 1.1330 & 0.0160 & 1.1086 & 0.0021 \\
-        512 & 1.1218 & 0.0084 & 0.9497 & 0.0023 \\
+        1 & 1.4196 & 1.4107 & 0.0049 & 0.0039 \\
+        2 & 0.6940 & 0.6839 & 0.0052 & 0.0043 \\
+        4 & 0.3575 & 0.3454 & 0.0070 & 0.0037 \\
+        8 & 0.2034 & 0.1889 & 0.0084 & 0.0037 \\
+        16 & 0.1143 & 0.0954 & 0.0117 & 0.0039 \\
+        32 & 0.1457 & 0.1015 & 0.0175 & 0.0056 \\
+        64 & 0.1334 & 0.0542 & 0.0362 & 0.0060 \\
+        128 & 0.1498 & 0.0293 & 0.0448 & 0.0062 \\
+        256 & 1.1404 & 0.0162 & 1.1115 & 0.0060 \\
+        512 & 1.1314 & 0.0085 & 0.9416 & 0.0064 \\
         \bottomrule
     \end{tabular}
 \end{table}
+
+Para uma análise mais aprofundada, foram calculados os valores de
+\textit{speedup} e eficiência médios, tomando como base os valores de
+$\bar{T}_{total}$ para as diferentes configurações de números de processos.
+
+As valores da análise estão visíveis na Tabela~\ref{tab:speedup}, e organizados
+graficamente na
 
 \begin{table}
     \centering
@@ -224,18 +231,25 @@ A Tabela~\ref{tab:desempenho_processos} consolida os resultados obtidos.
         \toprule
         $N_p$ & $\bar{S}$ & $\bar{E}$ \\
         1     &  1.0000   &  1.0000   \\
-        2     &  1.8591   &  0.9296   \\
-        4     &  3.8791   &  0.9698   \\
-        8     &  6.7955   &  0.8494   \\
-        16    &  12.3796  &  0.7737   \\
-        32    &  9.5066   &  0.2971   \\
-        64    &  13.3548  &  0.2087   \\
-        128   &  11.5318  &  0.0901   \\
-        256   &  1.1342   &  0.0044   \\
-        512   &  1.1455   &  0.0022   \\
+        2     &  2.0455   &  1.0227   \\
+        4     &  3.9709   &  0.9927   \\
+        8     &  6.9798   &  0.8725   \\
+        16    &  12.4208  &  0.7763   \\
+        32    &  9.7427   &  0.3045   \\
+        64    &  10.6404  &  0.1663   \\
+        128   &  9.4779   &  0.0740   \\
+        256   &  1.2448   &  0.0049   \\
+        512   &  1.2547   &  0.0025   \\
         \bottomrule
     \end{tabular}
 \end{table}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1.0\linewidth]{Imagens/graficos_speedup_eficiencia.png}
+    \caption{\textsf{Gráficos de \textit{speedup} e eficiência médios.}}
+    \label{fig:grafico}
+\end{figure}
 
 De posse da agregação, foi construído um gráfico de linhas da
 Figura~\ref{fig:grafico} detalhando, para cada número de processos, o tempo
